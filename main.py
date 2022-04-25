@@ -156,7 +156,7 @@ class SignupScreen(GridLayout):
         with open("login_info.txt", "a") as file:
             file.write(f"{first_name},{last_name},{email},{password}\n")
         with open("highscores.txt", "a") as file:
-            file.write(f"{first_name} {last_name},{0}\n")
+            file.write(f"{first_name} {last_name},0\n")
 
         # Passing the name of the newly signed up user to highscores page and game page
         # The reason is so that highscores page can show the "You" and game page can
@@ -319,8 +319,15 @@ class GameScreen(GridLayout):
 
         # Creating a board made of buttons
         for button_count in range(self.cols * self.rows):
-            self.buttons_dict["Button_" + str(button_count)] = [Button(
-                halign="center", valign="middle", font_size=40, on_press=self.fill_button)]
+            self.buttons_dict[f"Button_{str(button_count)}"] = [
+                Button(
+                    halign="center",
+                    valign="middle",
+                    font_size=40,
+                    on_press=self.fill_button,
+                )
+            ]
+
 
         for count, button in enumerate(self.buttons_dict.values(), start=1):
             self.add_widget(button[0])
@@ -348,15 +355,16 @@ class GameScreen(GridLayout):
         computer_button_id = 0
         for button in self.buttons_dict.values():
 
-            if computer_move == button[0].pos:
-                if not hasattr(button[0], "pressed") or not button[0].pressed:
-                    button[0].text = self.ai.ai_option
-                    computer_button_id = button[1]
-                    setattr(button[0], "pressed", True)
-                    setattr(button[0], "checked_winner_on", True)
+            if computer_move == button[0].pos and (
+                not hasattr(button[0], "pressed") or not button[0].pressed
+            ):
+                button[0].text = self.ai.ai_option
+                computer_button_id = button[1]
+                setattr(button[0], "pressed", True)
+                setattr(button[0], "checked_winner_on", True)
 
-                    if self.moves_counter < 9:
-                        self.moves_counter += 1
+                if self.moves_counter < 9:
+                    self.moves_counter += 1
 
         instance_id = 0
         for button in self.buttons_dict.values():
@@ -374,47 +382,45 @@ class GameScreen(GridLayout):
         self.game_over(self.moves_counter, winner)
 
     def game_over(self, moves_counter, winner):
-        if self.moves_counter == (self.cols * self.rows) or winner != "":
-            pop_up_layout = BoxLayout(orientation='vertical', padding=(10))
+        if self.moves_counter != self.cols * self.rows and winner == "":
+            return
+        pop_up_layout = BoxLayout(orientation='vertical', padding=(10))
 
-            # Setting up the popup_title depending on who the winner is or if no one won
-            popup_title = f"{self.current_player} is the winner!" if winner == "Player" else "AI beat your ass!"
-            popup = Popup(title=popup_title if winner != "" else "It's a tie!!",
-                          content=pop_up_layout, size_hint=(0.8, 0.7), auto_dismiss=False)
+        # Setting up the popup_title depending on who the winner is or if no one won
+        popup_title = f"{self.current_player} is the winner!" if winner == "Player" else "AI beat your ass!"
+        popup = Popup(title=popup_title if winner != "" else "It's a tie!!",
+                      content=pop_up_layout, size_hint=(0.8, 0.7), auto_dismiss=False)
 
-            if os.path.isdir(r"Game Sounds/"):
+        if os.path.isdir(r"Game Sounds/"):
                 # Playing a "win" sound if the winner is the player
-                if winner == "Player":
-                    win_sound = SoundLoader.load(r"Game Sounds/win_sound.wav")
-                    if win_sound:
-                        win_sound.play()
-                # And here is the loss sound
-                elif winner == "Ai":
-                    loss_sound = SoundLoader.load(r"Game Sounds/loss_sound.wav")
-                    if loss_sound:
-                        loss_sound.play()
+            if winner == "Player":
+                if win_sound := SoundLoader.load(r"Game Sounds/win_sound.wav"):
+                    win_sound.play()
+            elif winner == "Ai":
+                if loss_sound := SoundLoader.load(r"Game Sounds/loss_sound.wav"):
+                    loss_sound.play()
 
-            # Setting up the popup message depending on who won. ALso setting up the color
-            popup_msg = "You have won the game!!" if winner == "Player" else "You have lost the game!!"
-            popup_msg_color = [
-                0, 1, 0, 1] if winner == "Player" else [1, 0, 0, 1]
-            game_over_msg = Label(text=popup_msg if winner != "" else "The game is over. It is a tie!!",
-                                  color=popup_msg_color if winner != "" else [1, 1, 1, 1])
+        # Setting up the popup message depending on who won. ALso setting up the color
+        popup_msg = "You have won the game!!" if winner == "Player" else "You have lost the game!!"
+        popup_msg_color = [
+            0, 1, 0, 1] if winner == "Player" else [1, 0, 0, 1]
+        game_over_msg = Label(text=popup_msg if winner != "" else "The game is over. It is a tie!!",
+                              color=popup_msg_color if winner != "" else [1, 1, 1, 1])
 
-            pop_up_layout.add_widget(game_over_msg)
+        pop_up_layout.add_widget(game_over_msg)
 
-            back_to_user_page = Button(
-                text="Go back", on_press=lambda instance: self.reset_board(popup, True))
-            another_game = Button(text="Or...player another game!!",
-                                  on_press=lambda instance: self.reset_board(popup, False))
-            
-            back_to_user_page.bind(on_press=popup.dismiss)
-            another_game.bind(on_press=popup.dismiss)
+        back_to_user_page = Button(
+            text="Go back", on_press=lambda instance: self.reset_board(popup, True))
+        another_game = Button(text="Or...player another game!!",
+                              on_press=lambda instance: self.reset_board(popup, False))
 
-            pop_up_layout.add_widget(back_to_user_page)
-            pop_up_layout.add_widget(another_game)
+        back_to_user_page.bind(on_press=popup.dismiss)
+        another_game.bind(on_press=popup.dismiss)
 
-            Clock.schedule_once(popup.open, 0.6)
+        pop_up_layout.add_widget(back_to_user_page)
+        pop_up_layout.add_widget(another_game)
+
+        Clock.schedule_once(popup.open, 0.6)
 
     def reset_board(self, popup, back_to_user_home):
 
